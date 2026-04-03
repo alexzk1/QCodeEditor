@@ -6,9 +6,6 @@
 #include <QFile>
 #include <QStringListModel>
 
-#include <wobjectimpl.h>
-W_OBJECT_IMPL(QLuaCompleter)
-
 QLuaCompleter::QLuaCompleter(QObject *parent) : QCompleter(parent)
 {
     // Setting up GLSL types

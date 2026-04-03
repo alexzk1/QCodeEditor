@@ -21,7 +21,7 @@ class QCodeEditor;
 /**
  * @brief Class, that describes demo main window.
  */
-class MainWindow : public QMainWindow
+class QMareTextEditorWidget : public QMainWindow
 {
     Q_OBJECT
 
@@ -31,7 +31,7 @@ public:
      * @brief Constructor.
      * @param parent Pointer to parent widget.
      */
-    explicit MainWindow(QWidget* parent=nullptr);
+    explicit QMareTextEditorWidget(QWidget* parent=nullptr);
 
 private:
 

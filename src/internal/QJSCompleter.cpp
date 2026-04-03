@@ -9,9 +9,6 @@
 #include <QMetaMethod>
 #include <QMetaProperty>
 
-#include <wobjectimpl.h>
-W_OBJECT_IMPL(QJSCompleter)
-
 QJSCompleter::QJSCompleter(QObject *parent) : QCompleter(parent)
 {
     // Setting up JavaScript types

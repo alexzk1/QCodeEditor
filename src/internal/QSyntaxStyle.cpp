@@ -1,14 +1,10 @@
 // QCodeEditor
 #include <QSyntaxStyle>
-#include "QtCompat.hpp"
 
 // Qt
 #include <QDebug>
 #include <QFile>
 #include <QXmlStreamReader>
-
-#include <wobjectimpl.h>
-W_OBJECT_IMPL(QSyntaxStyle)
 
 QSyntaxStyle::QSyntaxStyle(QObject *parent) : QObject(parent), m_name(), m_data(), m_loaded(false)
 {
@@ -147,7 +143,7 @@ QSyntaxStyle *QSyntaxStyle::defaultStyle()
     if (!style.isLoaded())
     {
         Q_INIT_RESOURCE(qcodeeditor_resources);
-        QFile fl(":/default_style.xml");
+        QFile fl(":/styles/default_style.xml");
 
         if (!fl.open(QIODevice::ReadOnly))
         {

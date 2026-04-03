@@ -3,7 +3,6 @@
 // Qt
 #include <QCompleter> // Required for inheritance
 #include <QStringList>
-#include <verdigris>
 
 class QObject;
 class QStringListModel;
@@ -14,7 +13,7 @@ class QStringListModel;
  */
 class QJSCompleter : public QCompleter
 {
-    W_OBJECT(QJSCompleter)
+    Q_OBJECT;
 
   public:
     /**

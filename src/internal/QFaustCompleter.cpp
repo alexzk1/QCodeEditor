@@ -6,9 +6,6 @@
 #include <QFile>
 #include <QStringListModel>
 
-#include <wobjectimpl.h>
-
-W_OBJECT_IMPL(QFaustCompleter)
 QFaustCompleter::QFaustCompleter(QObject *parent) : QCompleter(parent)
 {
     // Setting up Faust types and functions

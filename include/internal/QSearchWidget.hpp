@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QWidget>
-#include <verdigris>
 
 class QCodeEditor;
 class QLineEdit;
@@ -14,7 +13,7 @@ class QLabel;
  */
 class QSearchWidget : public QWidget
 {
-    W_OBJECT(QSearchWidget)
+    Q_OBJECT;
 
 public:
     /**
@@ -53,26 +52,26 @@ public:
      */
     QString searchText() const;
 
-public:
+signals:
     /**
      * @brief Signal emitted when search text changes.
      */
-    void searchTextChanged(const QString &text) W_SIGNAL(searchTextChanged, text);
+    void searchTextChanged(const QString &text);
 
     /**
      * @brief Signal emitted when user requests next match.
      */
-    void findNext() W_SIGNAL(findNext);
+    void findNext();
 
     /**
      * @brief Signal emitted when user requests previous match.
      */
-    void findPrevious() W_SIGNAL(findPrevious);
+    void findPrevious();
 
     /**
      * @brief Signal emitted when search is closed.
      */
-    void searchClosed() W_SIGNAL(searchClosed);
+    void searchClosed();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;

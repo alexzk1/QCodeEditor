@@ -9,9 +9,6 @@
 #include <QKeyEvent>
 #include <QStyle>
 
-#include <wobjectimpl.h>
-W_OBJECT_IMPL(QSearchWidget)
-
 QSearchWidget::QSearchWidget(QCodeEditor *parent)
     : QWidget(parent)
     , m_codeEditor(parent)

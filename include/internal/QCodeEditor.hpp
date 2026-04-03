@@ -2,7 +2,6 @@
 
 // Qt
 #include <QTextEdit> // Required for inheritance
-#include <verdigris>
 
 class QCompleter;
 class QLineNumberArea;
@@ -16,7 +15,7 @@ class QFramedTextAttribute;
  */
 class QCodeEditor : public QTextEdit
 {
-    W_OBJECT(QCodeEditor)
+    Q_OBJECT;
 
   public:
     /**
@@ -159,30 +158,29 @@ class QCodeEditor : public QTextEdit
      */
     bool isSearchVisible() const;
 
-  public:
+  signals:
     /**
      * @brief Signal, the font is changed by the wheel event.
      */
-    void fontChanged(const QFont &newFont) W_SIGNAL(fontChanged, newFont);
+    void fontChanged(const QFont &newFont);
 
     /**
      * @brief Signal, like QLineEdit::editingFinished
      */
-    void editingFinished() W_SIGNAL(editingFinished);
+    void editingFinished();
 
     /**
      * @brief CTRL+Enter
      */
-    void livecodeTrigger() W_SIGNAL(livecodeTrigger);
+    void livecodeTrigger();
 
-  public:
+  public slots:
     /**
      * @brief Slot, that performs insertion of
      * completion info into code.
      * @param s Data.
      */
     void insertCompletion(const QString &s);
-    W_SLOT(insertCompletion);
 
     /**
      * @brief Slot, that performs update of
@@ -190,7 +188,6 @@ class QCodeEditor : public QTextEdit
      * number area width.
      */
     void updateLineNumberAreaWidth(int);
-    W_SLOT(updateLineNumberAreaWidth);
 
     /**
      * @brief Slot, that performs update of some
@@ -198,95 +195,79 @@ class QCodeEditor : public QTextEdit
      * @param rect Area that has to be updated.
      */
     void updateLineNumberArea(QRect rect);
-    W_SLOT(updateLineNumberArea);
 
     /**
      * @brief Slot, that will proceed extra selection
      * for current cursor position.
      */
     void updateExtraSelection1();
-    W_SLOT(updateExtraSelection1);
     void updateExtraSelection2();
-    W_SLOT(updateExtraSelection2);
 
     /**
      * @brief Slot, that will update editor style.
      */
     void updateStyle();
-    W_SLOT(updateStyle);
 
     /**
      * @brief Slot, that indent the selected lines.
      */
     void indent();
-    W_SLOT(indent);
 
     /**
      * @brief Slot, that unindent the selected lines.
      */
     void unindent();
-    W_SLOT(unindent);
 
     /**
      * @brief Slot, that swap the selected lines up.
      */
     void swapLineUp();
-    W_SLOT(swapLineUp);
 
     /**
      * @brief Slot, that swap the selected lines down.
      */
     void swapLineDown();
-    W_SLOT(swapLineDown);
 
     /**
      * @brief Slot, that delete the selected lines.
      */
     void deleteLine();
-    W_SLOT(deleteLine);
 
     /**
      * @brief Slot, that duplicate the current line or the selection.
      */
     void duplicate();
-    W_SLOT(duplicate);
 
     /**
      * @brief Slot, that toggle single line comment of the
      * selected lines.
      */
     void toggleComment();
-    W_SLOT(toggleComment);
 
     /**
      * @brief Slot, that toggle block comment of the selection.
      */
     void toggleBlockComment();
-    W_SLOT(toggleBlockComment);
 
     /**
      * @brief Slot, handles search text changes.
      */
     void onSearchTextChanged(const QString &text);
-    W_SLOT(onSearchTextChanged);
 
     /**
      * @brief Slot, finds next occurrence.
      */
     void findNext();
-    W_SLOT(findNext);
 
     /**
      * @brief Slot, finds previous occurrence.
      */
     void findPrevious();
-    W_SLOT(findPrevious);
 
     /**
      * @brief Slot, clears search highlights.
      */
     void clearSearchHighlight();
-    W_SLOT(clearSearchHighlight);
 
   protected:
     /**
@@ -347,12 +328,11 @@ class QCodeEditor : public QTextEdit
      */
     bool event(QEvent *e) override;
 
-  private:
+  private slots:
     /**
      * @brief Slot, that updates the bottom margin.
      */
     void updateBottomMargin();
-    W_SLOT(updateBottomMargin)
 
   private:
     /**

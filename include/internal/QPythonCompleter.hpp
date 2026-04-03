@@ -2,7 +2,6 @@
 
 // Qt
 #include <QCompleter> // Required for inheritance
-#include <verdigris>
 
 /**
  * @brief Class, that describes completer with
@@ -10,7 +9,7 @@
  */
 class QPythonCompleter : public QCompleter
 {
-    W_OBJECT(QPythonCompleter)
+    Q_OBJECT;
 
   public:
     /**
