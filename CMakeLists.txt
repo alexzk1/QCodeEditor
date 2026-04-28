@@ -1,19 +1,27 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.12)
 project(QCodeEditor)
 
 set(CMAKE_CXX_STANDARD 17)
 
-option(BUILD_EXAMPLE "Example building required" Off)
+option(BUILD_EXAMPLE "Example building required" OFF)
 
-if (${BUILD_EXAMPLE})
-    message(STATUS "QCodeEditor example will be built.")
-    add_subdirectory(example)
+# Generate compile_commands.json in build/ for analyzers like clang-tidy.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(${BUILD_EXAMPLE})
+  message(STATUS "QCodeEditor example will be built.")
+  add_subdirectory(example)
 endif()
 
-if(Qt5Core_VERSION_STRING)
-  qt5_add_resources(QRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources/qcodeeditor_resources.qrc")
+# Defautling to Qt5 if nothing found yet.
+if(NOT ${QT_VERSION_MAJOR} OR ${QT_VERSION_MAJOR} EQUAL 5)
+  set(QT "Qt5")
+  qt5_add_resources(
+    QRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources/qcodeeditor_resources.qrc")
 else()
-  qt_add_resources(QRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources/qcodeeditor_resources.qrc")
+  set(QT "Qt${QT_VERSION_MAJOR}")
+  qt_add_resources(
+    QRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources/qcodeeditor_resources.qrc")
 endif()
 
 set(INCLUDE_FILES
@@ -59,8 +67,7 @@ set(INCLUDE_FILES
     include/internal/QPythonCompleter.hpp
     include/internal/QPythonHighlighter.hpp
     include/internal/QFaustCompleter.hpp
-    include/internal/QFaustHighlighter.hpp
-)
+    include/internal/QFaustHighlighter.hpp)
 
 set(SOURCE_FILES
     src/internal/QCodeEditor.cpp
@@ -82,49 +89,41 @@ set(SOURCE_FILES
     src/internal/QPythonCompleter.cpp
     src/internal/QPythonHighlighter.cpp
     src/internal/QFaustCompleter.cpp
-    src/internal/QFaustHighlighter.cpp
-)
+    src/internal/QFaustHighlighter.cpp)
 
-# Create code for QObjects
-set(CMAKE_AUTOMOC OFF)
+find_package(${QT} REQUIRED COMPONENTS Core Gui Widgets)
 
-# Create code from resource files
-set(CMAKE_AUTORCC ON)
+add_library(${PROJECT_NAME} STATIC ${QRCS} ${SOURCE_FILES} ${INCLUDE_FILES})
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-# Generate compile_commands.json in build/ for analyzers like clang-tidy.
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+target_include_directories(
+  ${PROJECT_NAME} PUBLIC $<INSTALL_INTERFACE:include>
+                         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
-# Find includes in corresponding build directories
-if(NOT QT_VERSION)
-  set(QT_VERSION Qt5)
+# This is required to compile when library is attached via CMP with using global
+# cache. Probably CMP with download per project would work.
+if(NOT WIN32)
+  execute_process(
+    COMMAND id -u
+    OUTPUT_VARIABLE USER_ID
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  set(SAFE_AUTOGEN_DIR "/tmp/cmake_autogen_${PROJECT_NAME}_${USER_ID}")
+else()
+  file(TO_CMAKE_PATH "$ENV{TEMP}" TEMP_PATH)
+  set(SAFE_AUTOGEN_DIR "${TEMP_PATH}/cmake_autogen_${PROJECT_NAME}")
 endif()
-find_package(${QT_VERSION} REQUIRED COMPONENTS Core Gui Widgets)
 
-add_library(QCodeEditor STATIC
-    ${QRCS}
-    ${SOURCE_FILES}
-    ${INCLUDE_FILES}
-)
-
-target_include_directories(QCodeEditor PUBLIC
-    include
-    "${OSSIA_3RDPARTY_FOLDER}/verdigris/src"
-)
+set_target_properties(
+  ${PROJECT_NAME}
+  PROPERTIES AUTOMOC ON
+             AUTOGEN_BUILD_DIR "${SAFE_AUTOGEN_DIR}"
+             AUTOUIC ON
+             AUTORCC ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    target_compile_options(QCodeEditor
-        PRIVATE
-        -pedantic
-        -Wall
-        -Wextra
-        -Woverloaded-virtual
-        -Winit-self
-        -Wunreachable-code
-    )
+  target_compile_options(
+    ${PROJECT_NAME} PRIVATE -pedantic -Wall -Wextra -Woverloaded-virtual
+                            -Winit-self -Wunreachable-code)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
-target_link_libraries(QCodeEditor
-    ${QT_PREFIX}::Core
-    ${QT_PREFIX}::Widgets
-    ${QT_PREFIX}::Gui
-)
+target_link_libraries(${PROJECT_NAME} ${QT}::Core ${QT}::Widgets ${QT}::Gui)
