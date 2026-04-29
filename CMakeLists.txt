@@ -97,8 +97,9 @@ add_library(${PROJECT_NAME} STATIC ${QRCS} ${SOURCE_FILES} ${INCLUDE_FILES})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_include_directories(
-  ${PROJECT_NAME} PUBLIC $<INSTALL_INTERFACE:include>
-                         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+  ${PROJECT_NAME}
+  PUBLIC $<INSTALL_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
 # This is required to compile when library is attached via CMP with using global
 # cache. Probably CMP with download per project would work.
