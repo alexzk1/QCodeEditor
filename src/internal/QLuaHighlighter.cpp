@@ -50,7 +50,7 @@ QLuaHighlighter::QLuaHighlighter(QTextDocument *document)
     m_highlightRules.append({QRegularExpression(R"(--[^\n]*)"), "Comment"});
 
     // Multiline comments
-    m_highlightBlockRules.append({QRegularExpression(R"(--\[\[)"), QRegularExpression(R"(--\]\])"), "Comment"});
+    m_highlightBlockRules.append({QRegularExpression(R"(--\[\[)"), QRegularExpression(R"(\]\])"), "Comment"});
 
     // Multiline string
     m_highlightBlockRules.append({QRegularExpression(R"(\[\[)"), QRegularExpression(R"(\]\])"), "String"});
