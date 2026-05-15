@@ -39,31 +39,37 @@
 #include <qpaintdevice.h>
 #include <qtmetamacros.h>
 #include <qtversionchecks.h>
+#include <qtypes.h>
 #include <utility>
 
 namespace
 {
 struct SelectionContext
 {
-    explicit SelectionContext(QTextCursor cursorCopy, QString fullPlainText)
-        : cursor{std::move(cursorCopy)}, lines{fullPlainText.remove('\r').split('\n')},
-          selectionStart(cursor.selectionStart()), selectionEnd(cursor.selectionEnd()),
-          cursorAtEnd{(cursor.position() == selectionEnd)}, lineStart{lineHelper(cursor, selectionStart)},
-          lineEnd(lineHelper(cursor, selectionEnd))
+    explicit SelectionContext(QTextCursor cursorCopy)
+        : cursor{cursorCopy} /*Do a copy, so cursor remains original one*/, columnNumber{cursorCopy.columnNumber()},
+          selectionStart(cursorCopy.selectionStart()), selectionEnd(cursorCopy.selectionEnd()),
+          cursorAtEnd{(cursorCopy.position() == selectionEnd)}, lineStart{lineHelper(cursorCopy, selectionStart)},
+          lineEnd(lineHelper(cursorCopy, selectionEnd))
     {
     }
 
     void normalizeSelection()
     {
+        normalizeSelection(selectionStart, selectionEnd);
+    }
+
+    void normalizeSelection(int start, int end)
+    {
         if (cursorAtEnd)
         {
-            cursor.setPosition(selectionStart);
-            cursor.setPosition(selectionEnd, QTextCursor::KeepAnchor);
+            cursor.setPosition(start);
+            cursor.setPosition(end, QTextCursor::KeepAnchor);
         }
         else
         {
-            cursor.setPosition(selectionEnd);
-            cursor.setPosition(selectionStart, QTextCursor::KeepAnchor);
+            cursor.setPosition(end);
+            cursor.setPosition(start, QTextCursor::KeepAnchor);
         }
     }
 
@@ -74,7 +80,7 @@ struct SelectionContext
     }
 
     QTextCursor cursor;
-    QStringList lines;
+    int columnNumber;
     int selectionStart;
     int selectionEnd;
     bool cursorAtEnd;
@@ -103,6 +109,8 @@ QCodeEditor::QCodeEditor(QWidget *widget)
         }
     });
 }
+
+QCodeEditor::~QCodeEditor() = default;
 
 void QCodeEditor::initFont()
 {
@@ -314,19 +322,21 @@ void QCodeEditor::unindent()
 
 void QCodeEditor::swapLineUp()
 {
-    SelectionContext ctx{textCursor(), toPlainText()};
+    SelectionContext ctx{textCursor()};
 
     if (ctx.lineStart == 0)
     {
         return;
     }
-    ctx.selectionStart -= ctx.lines[ctx.lineStart - 1].length() + 1;
-    ctx.selectionEnd -= ctx.lines[ctx.lineStart - 1].length() + 1;
-    ctx.lines.move(ctx.lineStart - 1, ctx.lineEnd);
+
+    auto lines = getLines();
+    ctx.selectionStart -= lines[ctx.lineStart - 1].length() + 1;
+    ctx.selectionEnd -= lines[ctx.lineStart - 1].length() + 1;
+    lines.move(ctx.lineStart - 1, ctx.lineEnd);
 
     // FIXME: this is inefficient - it replaces the whole document.
     ctx.cursor.select(QTextCursor::Document);
-    ctx.cursor.insertText(ctx.lines.join('\n'));
+    ctx.cursor.insertText(lines.join('\n'));
 
     ctx.normalizeSelection();
 
@@ -335,19 +345,21 @@ void QCodeEditor::swapLineUp()
 
 void QCodeEditor::swapLineDown()
 {
-    SelectionContext ctx{textCursor(), toPlainText()};
+    SelectionContext ctx{textCursor()};
 
     if (ctx.lineEnd == document()->blockCount() - 1)
     {
         return;
     }
-    ctx.selectionStart += ctx.lines[ctx.lineEnd + 1].length() + 1;
-    ctx.selectionEnd += ctx.lines[ctx.lineEnd + 1].length() + 1;
-    ctx.lines.move(ctx.lineEnd + 1, ctx.lineStart);
+
+    auto lines = getLines();
+    ctx.selectionStart += lines[ctx.lineEnd + 1].length() + 1;
+    ctx.selectionEnd += lines[ctx.lineEnd + 1].length() + 1;
+    lines.move(ctx.lineEnd + 1, ctx.lineStart);
 
     // FIXME: this is inefficient - it replaces the whole document.
     ctx.cursor.select(QTextCursor::Document);
-    ctx.cursor.insertText(ctx.lines.join('\n'));
+    ctx.cursor.insertText(lines.join('\n'));
 
     ctx.normalizeSelection();
 
@@ -356,37 +368,32 @@ void QCodeEditor::swapLineDown()
 
 void QCodeEditor::deleteLine()
 {
-    auto cursor = textCursor();
-    const int selectionStart = cursor.selectionStart();
-    const int selectionEnd = cursor.selectionEnd();
-    cursor.setPosition(selectionStart);
-    const int lineStart = cursor.blockNumber();
-    cursor.setPosition(selectionEnd);
-    const int lineEnd = cursor.blockNumber();
-    const int columnNumber = textCursor().columnNumber();
+    SelectionContext ctx{textCursor()};
+    auto &cursor = ctx.cursor;
+
     cursor.movePosition(QTextCursor::Start);
-    if (lineEnd == document()->blockCount() - 1)
+    if (ctx.lineEnd == document()->blockCount() - 1)
     {
-        if (lineStart == 0)
+        if (ctx.lineStart == 0)
         {
             cursor.select(QTextCursor::Document);
         }
         else
         {
-            cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart - 1);
+            cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, ctx.lineStart - 1);
             cursor.movePosition(QTextCursor::EndOfBlock);
             cursor.movePosition(QTextCursor::End, QTextCursor::KeepAnchor);
         }
     }
     else
     {
-        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart);
-        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, lineEnd - lineStart + 1);
+        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, ctx.lineStart);
+        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, ctx.lineEnd - ctx.lineStart + 1);
     }
     cursor.removeSelectedText();
     cursor.movePosition(QTextCursor::StartOfBlock);
     cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor,
-                        qMin(columnNumber, cursor.block().text().length()));
+                        qMin(ctx.columnNumber, cursor.block().text().length()));
     setTextCursor(cursor);
 }
 
@@ -453,35 +460,24 @@ void QCodeEditor::toggleBlockComment()
         return;
     }
 
-    auto cursor = textCursor();
-    const int startPos = cursor.selectionStart();
-    const int endPos = cursor.selectionEnd();
-    const bool cursorAtEnd = cursor.position() == endPos;
+    SelectionContext ctx{textCursor()};
+    auto &cursor = ctx.cursor;
     const auto text = cursor.selectedText();
-    int pos1 = 0, pos2 = 0;
+    int posStart = 0, posEnd = 0;
     if (text.indexOf(commentStart) == 0 && text.length() >= commentStart.length() + commentEnd.length() &&
         text.lastIndexOf(commentEnd) + commentEnd.length() == text.length())
     {
         insertPlainText(text.mid(commentStart.length(), text.length() - commentStart.length() - commentEnd.length()));
-        pos1 = startPos;
-        pos2 = endPos - commentStart.length() - commentEnd.length();
+        posStart = ctx.selectionStart;
+        posEnd = ctx.selectionEnd - commentStart.length() - commentEnd.length();
     }
     else
     {
         insertPlainText(commentStart + text + commentEnd);
-        pos1 = startPos;
-        pos2 = endPos + commentStart.length() + commentEnd.length();
+        posStart = ctx.selectionStart;
+        posEnd = ctx.selectionEnd + commentStart.length() + commentEnd.length();
     }
-    if (cursorAtEnd)
-    {
-        cursor.setPosition(pos1);
-        cursor.setPosition(pos2, QTextCursor::KeepAnchor);
-    }
-    else
-    {
-        cursor.setPosition(pos2);
-        cursor.setPosition(pos1, QTextCursor::KeepAnchor);
-    }
+    ctx.normalizeSelection(posStart, posEnd);
     setTextCursor(cursor);
 }
 
@@ -972,7 +968,7 @@ bool QCodeEditor::tabReplace() const
     return m_replaceTab;
 }
 
-void QCodeEditor::setTabReplaceSize(int val)
+void QCodeEditor::setTabReplaceSize(qsizetype val)
 {
     m_tabReplace.fill(' ', val);
 #if QT_VERSION >= 0x050B00
@@ -1076,6 +1072,11 @@ bool QCodeEditor::event(QEvent *event)
         return true;
     }
     return QTextEdit::event(event);
+}
+
+QStringList QCodeEditor::getLines() const
+{
+    return toPlainText().remove('\r').split('\n');
 }
 
 void QCodeEditor::insertCompletion(const QString &s)
@@ -1196,34 +1197,29 @@ void QCodeEditor::insertFromMimeData(const QMimeData *source)
 
 bool QCodeEditor::removeInEachLineOfSelection(const QRegularExpression &regex, bool force)
 {
-    auto cursor = textCursor();
-    auto lines = toPlainText().remove('\r').split('\n');
-    const int selectionStart = cursor.selectionStart();
-    const int selectionEnd = cursor.selectionEnd();
-    const bool cursorAtEnd = cursor.position() == selectionEnd;
-    cursor.setPosition(selectionStart);
-    const int lineStart = cursor.blockNumber();
-    cursor.setPosition(selectionEnd);
-    const int lineEnd = cursor.blockNumber();
+    SelectionContext ctx{textCursor()};
+    auto &cursor = ctx.cursor;
+    auto lines = getLines();
+
     QString newText;
     QTextStream stream(&newText);
     int deleteTotal = 0, deleteFirst = 0;
-    for (int i = lineStart; i <= lineEnd; ++i)
+    for (auto i = ctx.lineStart; i <= ctx.lineEnd; ++i)
     {
         auto line = lines[i];
         auto match = regex.match(line).captured(1);
-        const int len = match.length();
+        const auto len = static_cast<int>(match.length());
         if (len == 0 && !force)
         {
             return false;
         }
-        if (i == lineStart)
+        if (i == ctx.lineStart)
         {
             deleteFirst = len;
         }
         deleteTotal += len;
         stream << line.remove(line.indexOf(match), len);
-        if (i != lineEnd)
+        if (i != ctx.lineEnd)
         {
 #if QT_VERSION >= 0x50E00
             stream << Qt::endl;
@@ -1233,56 +1229,42 @@ bool QCodeEditor::removeInEachLineOfSelection(const QRegularExpression &regex, b
         }
     }
     cursor.movePosition(QTextCursor::Start);
-    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart);
-    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, lineEnd - lineStart);
+    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, ctx.lineStart);
+    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, ctx.lineEnd - ctx.lineStart);
     cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
     cursor.insertText(newText);
-    cursor.setPosition(qMax(0, selectionStart - deleteFirst));
-    if (cursor.blockNumber() < lineStart)
+    cursor.setPosition(qMax(0, ctx.selectionStart - deleteFirst));
+    if (cursor.blockNumber() < ctx.lineStart)
     {
-        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart - cursor.blockNumber());
+        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, ctx.lineStart - cursor.blockNumber());
         cursor.movePosition(QTextCursor::StartOfBlock);
     }
-    const int pos = cursor.position();
-    cursor.setPosition(selectionEnd - deleteTotal);
-    if (cursor.blockNumber() < lineEnd)
+    const int posStart = cursor.position();
+    cursor.setPosition(ctx.selectionEnd - deleteTotal);
+    if (cursor.blockNumber() < ctx.lineEnd)
     {
-        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineEnd - cursor.blockNumber());
+        cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, ctx.lineEnd - cursor.blockNumber());
         cursor.movePosition(QTextCursor::StartOfBlock);
     }
-    const int pos2 = cursor.position();
-    if (cursorAtEnd)
-    {
-        cursor.setPosition(pos);
-        cursor.setPosition(pos2, QTextCursor::KeepAnchor);
-    }
-    else
-    {
-        cursor.setPosition(pos2);
-        cursor.setPosition(pos, QTextCursor::KeepAnchor);
-    }
+    const int posEnd = cursor.position();
+    ctx.normalizeSelection(posStart, posEnd);
     setTextCursor(cursor);
     return true;
 }
 
 void QCodeEditor::addInEachLineOfSelection(const QRegularExpression &regex, const QString &str)
 {
-    auto cursor = textCursor();
-    auto lines = toPlainText().remove('\r').split('\n');
-    const int selectionStart = cursor.selectionStart();
-    const int selectionEnd = cursor.selectionEnd();
-    const bool cursorAtEnd = cursor.position() == selectionEnd;
-    cursor.setPosition(selectionStart);
-    const int lineStart = cursor.blockNumber();
-    cursor.setPosition(selectionEnd);
-    const int lineEnd = cursor.blockNumber();
+    SelectionContext ctx{textCursor()};
+    auto &cursor = ctx.cursor;
+    auto lines = getLines();
+
     QString newText;
     QTextStream stream(&newText);
-    for (int i = lineStart; i <= lineEnd; ++i)
+    for (int i = ctx.lineStart; i <= ctx.lineEnd; ++i)
     {
         auto line = lines[i];
         stream << line.insert(line.indexOf(regex), str);
-        if (i != lineEnd)
+        if (i != ctx.lineEnd)
         {
 #if QT_VERSION >= 0x50E00
             stream << Qt::endl;
@@ -1292,22 +1274,14 @@ void QCodeEditor::addInEachLineOfSelection(const QRegularExpression &regex, cons
         }
     }
     cursor.movePosition(QTextCursor::Start);
-    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart);
-    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, lineEnd - lineStart);
+    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, ctx.lineStart);
+    cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, ctx.lineEnd - ctx.lineStart);
     cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
     cursor.insertText(newText);
-    const int pos = selectionStart + str.length();
-    const int pos2 = selectionEnd + str.length() * (lineEnd - lineStart + 1);
-    if (cursorAtEnd)
-    {
-        cursor.setPosition(pos);
-        cursor.setPosition(pos2, QTextCursor::KeepAnchor);
-    }
-    else
-    {
-        cursor.setPosition(pos2);
-        cursor.setPosition(pos, QTextCursor::KeepAnchor);
-    }
+    const auto len = static_cast<int>(str.length());
+    const int posStart = ctx.selectionStart + len;
+    const int posEnd = ctx.selectionEnd + len * (ctx.lineEnd - ctx.lineStart + 1);
+    ctx.normalizeSelection(posStart, posEnd);
     setTextCursor(cursor);
 }
 
