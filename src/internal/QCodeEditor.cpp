@@ -41,6 +41,48 @@
 #include <qtversionchecks.h>
 #include <utility>
 
+namespace
+{
+struct SelectionContext
+{
+    explicit SelectionContext(QTextCursor cursorCopy, QString fullPlainText)
+        : cursor{std::move(cursorCopy)}, lines{fullPlainText.remove('\r').split('\n')},
+          selectionStart(cursor.selectionStart()), selectionEnd(cursor.selectionEnd()),
+          cursorAtEnd{(cursor.position() == selectionEnd)}, lineStart{lineHelper(cursor, selectionStart)},
+          lineEnd(lineHelper(cursor, selectionEnd))
+    {
+    }
+
+    void normalizeSelection()
+    {
+        if (cursorAtEnd)
+        {
+            cursor.setPosition(selectionStart);
+            cursor.setPosition(selectionEnd, QTextCursor::KeepAnchor);
+        }
+        else
+        {
+            cursor.setPosition(selectionEnd);
+            cursor.setPosition(selectionStart, QTextCursor::KeepAnchor);
+        }
+    }
+
+    static int lineHelper(QTextCursor &cursor, int pos)
+    {
+        cursor.setPosition(pos);
+        return cursor.blockNumber();
+    }
+
+    QTextCursor cursor;
+    QStringList lines;
+    int selectionStart;
+    int selectionEnd;
+    bool cursorAtEnd;
+    int lineStart;
+    int lineEnd;
+};
+} // namespace
+
 QCodeEditor::QCodeEditor(QWidget *widget)
     : QTextEdit(widget), m_highlighter(nullptr), m_syntaxStyle(nullptr), m_lineNumberArea(new QLineNumberArea(this)),
       m_searchWidget(new QSearchWidget(this)), m_completer(nullptr), m_autoIndentation(true), m_replaceTab(true),
@@ -272,76 +314,44 @@ void QCodeEditor::unindent()
 
 void QCodeEditor::swapLineUp()
 {
-    auto cursor = textCursor();
-    auto lines = toPlainText().remove('\r').split('\n');
-    int selectionStart = cursor.selectionStart();
-    int selectionEnd = cursor.selectionEnd();
-    const bool cursorAtEnd = cursor.position() == selectionEnd;
-    cursor.setPosition(selectionStart);
-    const int lineStart = cursor.blockNumber();
-    cursor.setPosition(selectionEnd);
-    const int lineEnd = cursor.blockNumber();
+    SelectionContext ctx{textCursor(), toPlainText()};
 
-    if (lineStart == 0)
+    if (ctx.lineStart == 0)
     {
         return;
     }
-    selectionStart -= lines[lineStart - 1].length() + 1;
-    selectionEnd -= lines[lineStart - 1].length() + 1;
-    lines.move(lineStart - 1, lineEnd);
+    ctx.selectionStart -= ctx.lines[ctx.lineStart - 1].length() + 1;
+    ctx.selectionEnd -= ctx.lines[ctx.lineStart - 1].length() + 1;
+    ctx.lines.move(ctx.lineStart - 1, ctx.lineEnd);
 
-    cursor.select(QTextCursor::Document);
-    cursor.insertText(lines.join('\n'));
+    // FIXME: this is inefficient - it replaces the whole document.
+    ctx.cursor.select(QTextCursor::Document);
+    ctx.cursor.insertText(ctx.lines.join('\n'));
 
-    if (cursorAtEnd)
-    {
-        cursor.setPosition(selectionStart);
-        cursor.setPosition(selectionEnd, QTextCursor::KeepAnchor);
-    }
-    else
-    {
-        cursor.setPosition(selectionEnd);
-        cursor.setPosition(selectionStart, QTextCursor::KeepAnchor);
-    }
+    ctx.normalizeSelection();
 
-    setTextCursor(cursor);
+    setTextCursor(ctx.cursor);
 }
 
 void QCodeEditor::swapLineDown()
 {
-    auto cursor = textCursor();
-    auto lines = toPlainText().remove('\r').split('\n');
-    int selectionStart = cursor.selectionStart();
-    int selectionEnd = cursor.selectionEnd();
-    const bool cursorAtEnd = cursor.position() == selectionEnd;
-    cursor.setPosition(selectionStart);
-    const int lineStart = cursor.blockNumber();
-    cursor.setPosition(selectionEnd);
-    const int lineEnd = cursor.blockNumber();
+    SelectionContext ctx{textCursor(), toPlainText()};
 
-    if (lineEnd == document()->blockCount() - 1)
+    if (ctx.lineEnd == document()->blockCount() - 1)
     {
         return;
     }
-    selectionStart += lines[lineEnd + 1].length() + 1;
-    selectionEnd += lines[lineEnd + 1].length() + 1;
-    lines.move(lineEnd + 1, lineStart);
+    ctx.selectionStart += ctx.lines[ctx.lineEnd + 1].length() + 1;
+    ctx.selectionEnd += ctx.lines[ctx.lineEnd + 1].length() + 1;
+    ctx.lines.move(ctx.lineEnd + 1, ctx.lineStart);
 
-    cursor.select(QTextCursor::Document);
-    cursor.insertText(lines.join('\n'));
+    // FIXME: this is inefficient - it replaces the whole document.
+    ctx.cursor.select(QTextCursor::Document);
+    ctx.cursor.insertText(ctx.lines.join('\n'));
 
-    if (cursorAtEnd)
-    {
-        cursor.setPosition(selectionStart);
-        cursor.setPosition(selectionEnd, QTextCursor::KeepAnchor);
-    }
-    else
-    {
-        cursor.setPosition(selectionEnd);
-        cursor.setPosition(selectionStart, QTextCursor::KeepAnchor);
-    }
+    ctx.normalizeSelection();
 
-    setTextCursor(cursor);
+    setTextCursor(ctx.cursor);
 }
 
 void QCodeEditor::deleteLine()
