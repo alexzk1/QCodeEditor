@@ -1,14 +1,15 @@
 // QCodeEditor
-#include <QCXXHighlighter>
-#include <QCodeEditor>
-#include <QJSHighlighter>
-#include <QJavaHighlighter>
-#include <QLineEdit>
-#include <QLineNumberArea>
-#include <QPythonHighlighter>
-#include <QSearchWidget>
-#include <QStyleSyntaxHighlighter>
-#include <QSyntaxStyle>
+#include "internal/QCodeEditor.hpp"
+
+#include <QCXXHighlighter>         //NOLINT
+#include <QCodeEditor>             //NOLINT
+#include <QJSHighlighter>          //NOLINT
+#include <QJavaHighlighter>        //NOLINT
+#include <QLineNumberArea>         //NOLINT
+#include <QPythonHighlighter>      //NOLINT
+#include <QSearchWidget>           //NOLINT
+#include <QStyleSyntaxHighlighter> //NOLINT
+#include <QSyntaxStyle>            //NOLINT
 
 // Qt
 #include <QAbstractItemView>
@@ -17,14 +18,28 @@
 #include <QCursor>
 #include <QDebug>
 #include <QFontDatabase>
+#include <QLineEdit>
 #include <QMimeData>
 #include <QPaintEvent>
 #include <QScrollBar>
 #include <QShortcut>
 #include <QTextBlock>
 #include <QTextCharFormat>
+#include <QTextEdit>
 #include <QTextStream>
 #include <QToolTip>
+#include <qbrush.h>
+#include <qcontainerfwd.h>
+#include <qlogging.h>
+#include <qminmax.h>
+#include <qnamespace.h>
+#include <qnumeric.h>
+#include <qobject.h>
+#include <qoverload.h>
+#include <qpaintdevice.h>
+#include <qtmetamacros.h>
+#include <qtversionchecks.h>
+#include <utility>
 
 QCodeEditor::QCodeEditor(QWidget *widget)
     : QTextEdit(widget), m_highlighter(nullptr), m_syntaxStyle(nullptr), m_lineNumberArea(new QLineNumberArea(this)),
@@ -40,8 +55,10 @@ QCodeEditor::QCodeEditor(QWidget *widget)
     setSyntaxStyle(QSyntaxStyle::defaultStyle());
 
     connect(this, &QTextEdit::textChanged, this, [this] {
-      if(hasFocus())
-        m_textChanged = true;
+        if (hasFocus())
+        {
+            m_textChanged = true;
+        }
     });
 }
 
@@ -112,9 +129,9 @@ void QCodeEditor::updateStyle()
 #ifndef QT_NO_STYLE_STYLESHEET
     if (m_syntaxStyle)
     {
-        QString backgroundColor = m_syntaxStyle->getFormat("Text").background().color().name();
-        QString textColor = m_syntaxStyle->getFormat("Text").foreground().color().name();
-        QString selectionBackground = m_syntaxStyle->getFormat("Selection").background().color().name();
+        const QString backgroundColor = m_syntaxStyle->getFormat("Text").background().color().name();
+        const QString textColor = m_syntaxStyle->getFormat("Text").foreground().color().name();
+        const QString selectionBackground = m_syntaxStyle->getFormat("Selection").background().color().name();
 
         setStyleSheet(QString("QTextEdit { background-color: %1; selection-background-color: %2; color: %3; }")
                           .arg(backgroundColor, selectionBackground, textColor));
@@ -135,13 +152,8 @@ void QCodeEditor::resizeEvent(QResizeEvent *e)
     // Position search widget at the top right
     if (m_searchWidget)
     {
-        int searchWidth = qMin(400, width() - m_lineNumberArea->sizeHint().width() - 20);
-        m_searchWidget->setGeometry(
-            width() - searchWidth - 10,
-            0,
-            searchWidth,
-            m_searchWidget->sizeHint().height()
-        );
+        const int searchWidth = qMin(400, width() - m_lineNumberArea->sizeHint().width() - 20);
+        m_searchWidget->setGeometry(width() - searchWidth - 10, 0, searchWidth, m_searchWidget->sizeHint().height());
     }
 }
 
@@ -149,7 +161,9 @@ void QCodeEditor::changeEvent(QEvent *e)
 {
     QTextEdit::changeEvent(e);
     if (e->type() == QEvent::FontChange)
+    {
         updateBottomMargin();
+    }
 }
 
 void QCodeEditor::wheelEvent(QWheelEvent *e)
@@ -164,9 +178,13 @@ void QCodeEditor::wheelEvent(QWheelEvent *e)
         }
         int newSize = font().pointSize();
         if (e->angleDelta().y() > 0)
+        {
             newSize = qMin(newSize + 1, sizes.last());
+        }
         else if (e->angleDelta().y() < 0)
+        {
             newSize = qMax(newSize - 1, sizes.first());
+        }
         if (newSize != font().pointSize())
         {
             QFont newFont = font();
@@ -176,12 +194,14 @@ void QCodeEditor::wheelEvent(QWheelEvent *e)
         }
     }
     else
+    {
         QTextEdit::wheelEvent(e);
+    }
 }
 
 void QCodeEditor::updateLineGeometry()
 {
-    QRect cr = contentsRect();
+    const QRect cr = contentsRect();
     m_lineNumberArea->setGeometry(QRect(cr.left(), cr.top(), m_lineNumberArea->sizeHint().width(), cr.height()));
 }
 
@@ -193,10 +213,10 @@ void QCodeEditor::updateBottomMargin()
         // calling QTextFrame::setFrameFormat with an empty document makes the application crash
         auto rf = doc->rootFrame();
         auto format = rf->frameFormat();
-        int documentMargin = doc->documentMargin();
-        int bottomMargin = m_extraBottomMargin
-                               ? qMax(documentMargin, viewport()->height() - fontMetrics().height()) - documentMargin
-                               : documentMargin;
+        const int documentMargin = doc->documentMargin();
+        const int bottomMargin =
+            m_extraBottomMargin ? qMax(documentMargin, viewport()->height() - fontMetrics().height()) - documentMargin
+                                : documentMargin;
         if (format.bottomMargin() != bottomMargin)
         {
             format.setBottomMargin(bottomMargin);
@@ -256,14 +276,16 @@ void QCodeEditor::swapLineUp()
     auto lines = toPlainText().remove('\r').split('\n');
     int selectionStart = cursor.selectionStart();
     int selectionEnd = cursor.selectionEnd();
-    bool cursorAtEnd = cursor.position() == selectionEnd;
+    const bool cursorAtEnd = cursor.position() == selectionEnd;
     cursor.setPosition(selectionStart);
-    int lineStart = cursor.blockNumber();
+    const int lineStart = cursor.blockNumber();
     cursor.setPosition(selectionEnd);
-    int lineEnd = cursor.blockNumber();
+    const int lineEnd = cursor.blockNumber();
 
     if (lineStart == 0)
+    {
         return;
+    }
     selectionStart -= lines[lineStart - 1].length() + 1;
     selectionEnd -= lines[lineStart - 1].length() + 1;
     lines.move(lineStart - 1, lineEnd);
@@ -291,14 +313,16 @@ void QCodeEditor::swapLineDown()
     auto lines = toPlainText().remove('\r').split('\n');
     int selectionStart = cursor.selectionStart();
     int selectionEnd = cursor.selectionEnd();
-    bool cursorAtEnd = cursor.position() == selectionEnd;
+    const bool cursorAtEnd = cursor.position() == selectionEnd;
     cursor.setPosition(selectionStart);
-    int lineStart = cursor.blockNumber();
+    const int lineStart = cursor.blockNumber();
     cursor.setPosition(selectionEnd);
-    int lineEnd = cursor.blockNumber();
+    const int lineEnd = cursor.blockNumber();
 
     if (lineEnd == document()->blockCount() - 1)
+    {
         return;
+    }
     selectionStart += lines[lineEnd + 1].length() + 1;
     selectionEnd += lines[lineEnd + 1].length() + 1;
     lines.move(lineEnd + 1, lineStart);
@@ -323,13 +347,13 @@ void QCodeEditor::swapLineDown()
 void QCodeEditor::deleteLine()
 {
     auto cursor = textCursor();
-    int selectionStart = cursor.selectionStart();
-    int selectionEnd = cursor.selectionEnd();
+    const int selectionStart = cursor.selectionStart();
+    const int selectionEnd = cursor.selectionEnd();
     cursor.setPosition(selectionStart);
-    int lineStart = cursor.blockNumber();
+    const int lineStart = cursor.blockNumber();
     cursor.setPosition(selectionEnd);
-    int lineEnd = cursor.blockNumber();
-    int columnNumber = textCursor().columnNumber();
+    const int lineEnd = cursor.blockNumber();
+    const int columnNumber = textCursor().columnNumber();
     cursor.movePosition(QTextCursor::Start);
     if (lineEnd == document()->blockCount() - 1)
     {
@@ -362,7 +386,7 @@ void QCodeEditor::duplicate()
     if (cursor.hasSelection()) // duplicate the selection
     {
         auto text = cursor.selectedText();
-        bool cursorAtEnd = cursor.selectionEnd() == cursor.position();
+        const bool cursorAtEnd = cursor.selectionEnd() == cursor.position();
         cursor.insertText(text + text);
         if (cursorAtEnd)
         {
@@ -376,7 +400,7 @@ void QCodeEditor::duplicate()
     }
     else // duplicate the current line
     {
-        int column = cursor.columnNumber();
+        const int column = cursor.columnNumber();
         cursor.movePosition(QTextCursor::StartOfBlock);
         cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
         auto text = cursor.selectedText();
@@ -390,10 +414,14 @@ void QCodeEditor::duplicate()
 void QCodeEditor::toggleComment()
 {
     if (m_highlighter == nullptr)
+    {
         return;
-    QString comment = m_highlighter->commentLineSequence();
+    }
+    const QString comment = m_highlighter->commentLineSequence();
     if (comment.isEmpty())
+    {
         return;
+    }
 
     if (!removeInEachLineOfSelection(QRegularExpression("^\\s*(" + comment + " ?)"), false))
     {
@@ -404,19 +432,23 @@ void QCodeEditor::toggleComment()
 void QCodeEditor::toggleBlockComment()
 {
     if (m_highlighter == nullptr)
+    {
         return;
-    QString commentStart = m_highlighter->startCommentBlockSequence();
-    QString commentEnd = m_highlighter->endCommentBlockSequence();
+    }
+    const QString commentStart = m_highlighter->startCommentBlockSequence();
+    const QString commentEnd = m_highlighter->endCommentBlockSequence();
 
     if (commentStart.isEmpty() || commentEnd.isEmpty())
+    {
         return;
+    }
 
     auto cursor = textCursor();
-    int startPos = cursor.selectionStart();
-    int endPos = cursor.selectionEnd();
-    bool cursorAtEnd = cursor.position() == endPos;
-    auto text = cursor.selectedText();
-    int pos1, pos2;
+    const int startPos = cursor.selectionStart();
+    const int endPos = cursor.selectionEnd();
+    const bool cursorAtEnd = cursor.position() == endPos;
+    const auto text = cursor.selectedText();
+    int pos1 = 0, pos2 = 0;
     if (text.indexOf(commentStart) == 0 && text.length() >= commentStart.length() + commentEnd.length() &&
         text.lastIndexOf(commentEnd) + commentEnd.length() == text.length())
     {
@@ -450,7 +482,7 @@ void QCodeEditor::highlightParenthesis()
 
     for (auto &p : m_parentheses)
     {
-        int direction;
+        int direction{};
 
         QChar counterSymbol;
         QChar activeSymbol;
@@ -545,10 +577,9 @@ void QCodeEditor::highlightOccurrences()
     if (cursor.hasSelection())
     {
         auto text = cursor.selectedText();
-        if (QRegularExpression(
-                R"((?:[_a-zA-Z][_a-zA-Z0-9]*)|(?<=\b|\s|^)(?i)(?:(?:(?:(?:(?:\d+(?:'\d+)*)?\.(?:\d+(?:'\d+)*)(?:e[+-]?(?:\d+(?:'\d+)*))?)|(?:(?:\d+(?:'\d+)*)\.(?:e[+-]?(?:\d+(?:'\d+)*))?)|(?:(?:\d+(?:'\d+)*)(?:e[+-]?(?:\d+(?:'\d+)*)))|(?:0x(?:[0-9a-f]+(?:'[0-9a-f]+)*)?\.(?:[0-9a-f]+(?:'[0-9a-f]+)*)(?:p[+-]?(?:\d+(?:'\d+)*)))|(?:0x(?:[0-9a-f]+(?:'[0-9a-f]+)*)\.?(?:p[+-]?(?:\d+(?:'\d+)*))))[lf]?)|(?:(?:(?:[1-9]\d*(?:'\d+)*)|(?:0[0-7]*(?:'[0-7]+)*)|(?:0x[0-9a-f]+(?:'[0-9a-f]+)*)|(?:0b[01]+(?:'[01]+)*))(?:u?l{0,2}|l{0,2}u?)))(?=\b|\s|$))")
-                .match(text)
-                .captured() == text)
+        static const QRegularExpression regexp(
+            R"((?:[_a-zA-Z][_a-zA-Z0-9]*)|(?<=\b|\s|^)(?i)(?:(?:(?:(?:(?:\d+(?:'\d+)*)?\.(?:\d+(?:'\d+)*)(?:e[+-]?(?:\d+(?:'\d+)*))?)|(?:(?:\d+(?:'\d+)*)\.(?:e[+-]?(?:\d+(?:'\d+)*))?)|(?:(?:\d+(?:'\d+)*)(?:e[+-]?(?:\d+(?:'\d+)*)))|(?:0x(?:[0-9a-f]+(?:'[0-9a-f]+)*)?\.(?:[0-9a-f]+(?:'[0-9a-f]+)*)(?:p[+-]?(?:\d+(?:'\d+)*)))|(?:0x(?:[0-9a-f]+(?:'[0-9a-f]+)*)\.?(?:p[+-]?(?:\d+(?:'\d+)*))))[lf]?)|(?:(?:(?:[1-9]\d*(?:'\d+)*)|(?:0[0-7]*(?:'[0-7]+)*)|(?:0x[0-9a-f]+(?:'[0-9a-f]+)*)|(?:0b[01]+(?:'[01]+)*))(?:u?l{0,2}|l{0,2}u?)))(?=\b|\s|$))");
+        if (regexp.match(text).captured() == text)
         {
             auto doc = document();
             cursor = doc->find(text, 0, QTextDocument::FindWholeWords | QTextDocument::FindCaseSensitively);
@@ -585,15 +616,15 @@ int QCodeEditor::getFirstVisibleBlock()
     curs.movePosition(QTextCursor::Start);
     for (int i = 0; i < document()->blockCount(); ++i)
     {
-        QTextBlock block = curs.block();
+        const QTextBlock block = curs.block();
 
-        QRect r1 = viewport()->geometry();
-        QRect r2 = document()
-                       ->documentLayout()
-                       ->blockBoundingRect(block)
-                       .translated(viewport()->geometry().x(),
-                                   viewport()->geometry().y() - verticalScrollBar()->sliderPosition())
-                       .toRect();
+        const QRect r1 = viewport()->geometry();
+        const QRect r2 = document()
+                             ->documentLayout()
+                             ->blockBoundingRect(block)
+                             .translated(viewport()->geometry().x(),
+                                         viewport()->geometry().y() - verticalScrollBar()->sliderPosition())
+                             .toRect();
 
         if (r1.intersects(r2))
         {
@@ -639,7 +670,7 @@ void QCodeEditor::proceedCompleterEnd(QKeyEvent *e)
         return;
     }
 
-    static QString eow(R"(~!@#$%^&*()_+{}|:"<>?,./;'[]\-=)");
+    static const QString eow(R"(~!@#$%^&*()_+{}|:"<>?,./;'[]\-=)");
 
     auto isShortcut = ((e->modifiers() & Qt::ControlModifier) && e->key() == Qt::Key_Space);
     auto completionPrefix = wordUnderCursor();
@@ -688,7 +719,7 @@ void QCodeEditor::keyPressEvent(QKeyEvent *e)
             QKeyEvent pureEnter(QEvent::KeyPress, Qt::Key_Enter, Qt::NoModifier);
             if (e->modifiers() == Qt::ControlModifier)
             {
-                livecodeTrigger();
+                emit livecodeTrigger();
                 return;
             }
             else if (e->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier))
@@ -754,9 +785,9 @@ void QCodeEditor::keyPressEvent(QKeyEvent *e)
 
         // Auto indentation
 
-        QString indentationSpaces = QRegularExpression("^\\s*")
-                                        .match(document()->findBlockByNumber(textCursor().blockNumber()).text())
-                                        .captured();
+        static const QRegularExpression regexp("^\\s*");
+        QString indentationSpaces =
+            regexp.match(document()->findBlockByNumber(textCursor().blockNumber()).text()).captured();
 
         // Have Qt Edior like behaviour, if {|} and enter is pressed indent the two
         // parenthesis
@@ -766,7 +797,9 @@ void QCodeEditor::keyPressEvent(QKeyEvent *e)
             insertPlainText("\n" + indentationSpaces + (m_replaceTab ? m_tabReplace : "\t") + "\n" + indentationSpaces);
 
             for (int i = 0; i <= indentationSpaces.length(); ++i)
+            {
                 moveCursor(QTextCursor::MoveOperation::Left);
+            }
 
             return;
         }
@@ -805,7 +838,9 @@ void QCodeEditor::keyPressEvent(QKeyEvent *e)
                 for (int i = 0; i < cursor.columnNumber(); ++i)
                 {
                     if (indentationSpaces[i] != '\t')
+                    {
                         ++realColumn;
+                    }
                     else
                     {
                         realColumn =
@@ -834,9 +869,9 @@ void QCodeEditor::keyPressEvent(QKeyEvent *e)
                     if (p.left == e->text())
                     {
                         // Add parentheses for selection
-                        int startPos = cursor.selectionStart();
-                        int endPos = cursor.selectionEnd();
-                        bool cursorAtEnd = cursor.position() == endPos;
+                        const int startPos = cursor.selectionStart();
+                        const int endPos = cursor.selectionEnd();
+                        const bool cursorAtEnd = cursor.position() == endPos;
                         auto text = p.left + cursor.selectedText() + p.right;
                         insertPlainText(text);
                         if (cursorAtEnd)
@@ -975,15 +1010,15 @@ void QCodeEditor::focusInEvent(QFocusEvent *e)
     QTextEdit::focusInEvent(e);
 }
 
-void QCodeEditor::focusOutEvent(QFocusEvent* e)
+void QCodeEditor::focusOutEvent(QFocusEvent *e)
 {
-  QTextEdit::focusOutEvent(e);
+    QTextEdit::focusOutEvent(e);
 
-  if(m_textChanged)
-  {
-      m_textChanged = false;
-      Q_EMIT editingFinished();
-  }
+    if (m_textChanged)
+    {
+        m_textChanged = false;
+        Q_EMIT editingFinished();
+    }
 }
 
 bool QCodeEditor::event(QEvent *event)
@@ -993,7 +1028,7 @@ bool QCodeEditor::event(QEvent *event)
         auto *helpEvent = dynamic_cast<QHelpEvent *>(event);
         auto point = helpEvent->pos();
         point.setX(point.x() - m_lineNumberArea->geometry().right());
-        QTextCursor cursor = cursorForPosition(point);
+        const QTextCursor cursor = cursorForPosition(point);
 
         auto lineNumber = cursor.blockNumber() + 1;
 
@@ -1001,7 +1036,7 @@ bool QCodeEditor::event(QEvent *event)
         copyCursor.movePosition(QTextCursor::StartOfBlock);
 
         auto blockPositionStart = cursor.positionInBlock() - copyCursor.positionInBlock();
-        QPair<int, int> positionOfTooltip{lineNumber, blockPositionStart};
+        const QPair<int, int> positionOfTooltip{lineNumber, blockPositionStart};
 
         QString text;
         for (auto const &e : std::as_const(m_squiggler))
@@ -1009,16 +1044,24 @@ bool QCodeEditor::event(QEvent *event)
             if (e.m_startPos <= positionOfTooltip && e.m_stopPos >= positionOfTooltip)
             {
                 if (text.isEmpty())
+                {
                     text = e.m_tooltipText;
+                }
                 else
+                {
                     text += "; " + e.m_tooltipText;
+                }
             }
         }
 
         if (text.isEmpty())
+        {
             QToolTip::hideText();
+        }
         else
+        {
             QToolTip::showText(helpEvent->globalPos(), text);
+        }
 
         return true;
     }
@@ -1047,9 +1090,11 @@ void QCodeEditor::squiggle(SeverityLevel level, QPair<int, int> start, QPair<int
                            const QString &tooltipMessage)
 {
     if (stop < start)
+    {
         return;
+    }
 
-    SquiggleInformation info(start, stop, tooltipMessage);
+    const SquiggleInformation info(start, stop, tooltipMessage);
     m_squiggler.push_back(info);
 
     auto cursor = textCursor();
@@ -1060,7 +1105,9 @@ void QCodeEditor::squiggle(SeverityLevel level, QPair<int, int> start, QPair<int
     cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor, start.second);
 
     if (stop.first > start.first)
+    {
         cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, stop.first - start.first);
+    }
 
     cursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::KeepAnchor);
     cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, stop.second);
@@ -1097,7 +1144,9 @@ void QCodeEditor::squiggle(SeverityLevel level, QPair<int, int> start, QPair<int
 void QCodeEditor::clearSquiggle()
 {
     if (m_squiggler.empty())
+    {
         return;
+    }
 
     m_squiggler.clear();
     extra_squiggles.clear();
@@ -1139,13 +1188,13 @@ bool QCodeEditor::removeInEachLineOfSelection(const QRegularExpression &regex, b
 {
     auto cursor = textCursor();
     auto lines = toPlainText().remove('\r').split('\n');
-    int selectionStart = cursor.selectionStart();
-    int selectionEnd = cursor.selectionEnd();
-    bool cursorAtEnd = cursor.position() == selectionEnd;
+    const int selectionStart = cursor.selectionStart();
+    const int selectionEnd = cursor.selectionEnd();
+    const bool cursorAtEnd = cursor.position() == selectionEnd;
     cursor.setPosition(selectionStart);
-    int lineStart = cursor.blockNumber();
+    const int lineStart = cursor.blockNumber();
     cursor.setPosition(selectionEnd);
-    int lineEnd = cursor.blockNumber();
+    const int lineEnd = cursor.blockNumber();
     QString newText;
     QTextStream stream(&newText);
     int deleteTotal = 0, deleteFirst = 0;
@@ -1153,19 +1202,25 @@ bool QCodeEditor::removeInEachLineOfSelection(const QRegularExpression &regex, b
     {
         auto line = lines[i];
         auto match = regex.match(line).captured(1);
-        int len = match.length();
+        const int len = match.length();
         if (len == 0 && !force)
+        {
             return false;
+        }
         if (i == lineStart)
+        {
             deleteFirst = len;
+        }
         deleteTotal += len;
         stream << line.remove(line.indexOf(match), len);
         if (i != lineEnd)
+        {
 #if QT_VERSION >= 0x50E00
             stream << Qt::endl;
 #else
             stream << endl;
 #endif
+        }
     }
     cursor.movePosition(QTextCursor::Start);
     cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart);
@@ -1178,14 +1233,14 @@ bool QCodeEditor::removeInEachLineOfSelection(const QRegularExpression &regex, b
         cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart - cursor.blockNumber());
         cursor.movePosition(QTextCursor::StartOfBlock);
     }
-    int pos = cursor.position();
+    const int pos = cursor.position();
     cursor.setPosition(selectionEnd - deleteTotal);
     if (cursor.blockNumber() < lineEnd)
     {
         cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineEnd - cursor.blockNumber());
         cursor.movePosition(QTextCursor::StartOfBlock);
     }
-    int pos2 = cursor.position();
+    const int pos2 = cursor.position();
     if (cursorAtEnd)
     {
         cursor.setPosition(pos);
@@ -1204,13 +1259,13 @@ void QCodeEditor::addInEachLineOfSelection(const QRegularExpression &regex, cons
 {
     auto cursor = textCursor();
     auto lines = toPlainText().remove('\r').split('\n');
-    int selectionStart = cursor.selectionStart();
-    int selectionEnd = cursor.selectionEnd();
-    bool cursorAtEnd = cursor.position() == selectionEnd;
+    const int selectionStart = cursor.selectionStart();
+    const int selectionEnd = cursor.selectionEnd();
+    const bool cursorAtEnd = cursor.position() == selectionEnd;
     cursor.setPosition(selectionStart);
-    int lineStart = cursor.blockNumber();
+    const int lineStart = cursor.blockNumber();
     cursor.setPosition(selectionEnd);
-    int lineEnd = cursor.blockNumber();
+    const int lineEnd = cursor.blockNumber();
     QString newText;
     QTextStream stream(&newText);
     for (int i = lineStart; i <= lineEnd; ++i)
@@ -1218,19 +1273,21 @@ void QCodeEditor::addInEachLineOfSelection(const QRegularExpression &regex, cons
         auto line = lines[i];
         stream << line.insert(line.indexOf(regex), str);
         if (i != lineEnd)
+        {
 #if QT_VERSION >= 0x50E00
             stream << Qt::endl;
 #else
             stream << endl;
 #endif
+        }
     }
     cursor.movePosition(QTextCursor::Start);
     cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, lineStart);
     cursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor, lineEnd - lineStart);
     cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
     cursor.insertText(newText);
-    int pos = selectionStart + str.length();
-    int pos2 = selectionEnd + str.length() * (lineEnd - lineStart + 1);
+    const int pos = selectionStart + str.length();
+    const int pos2 = selectionEnd + str.length() * (lineEnd - lineStart + 1);
     if (cursorAtEnd)
     {
         cursor.setPosition(pos);
@@ -1252,7 +1309,7 @@ void QCodeEditor::showSearch()
     auto cursor = textCursor();
     if (cursor.hasSelection())
     {
-        QString selectedText = cursor.selectedText();
+        const QString selectedText = cursor.selectedText();
         // Only use single-line selections
         if (!selectedText.contains(QChar::ParagraphSeparator))
         {
@@ -1285,7 +1342,7 @@ void QCodeEditor::onSearchTextChanged(const QString &text)
     }
 
     // Find all occurrences
-    QTextDocument *doc = document();
+    const QTextDocument *doc = document();
     QTextCursor cursor = doc->find(text, 0);
 
     while (!cursor.isNull())
@@ -1303,7 +1360,7 @@ void QCodeEditor::onSearchTextChanged(const QString &text)
     // Move to first result after current cursor position
     if (!m_searchResults.isEmpty())
     {
-        int cursorPos = textCursor().position();
+        const int cursorPos = textCursor().position();
         m_currentSearchIndex = 0;
 
         for (int i = 0; i < m_searchResults.size(); ++i)
@@ -1319,10 +1376,7 @@ void QCodeEditor::onSearchTextChanged(const QString &text)
         highlightCurrentSearchResult();
     }
 
-    m_searchWidget->updateResultCount(
-        m_searchResults.isEmpty() ? 0 : m_currentSearchIndex + 1,
-        m_searchResults.size()
-    );
+    m_searchWidget->updateResultCount(m_searchResults.isEmpty() ? 0 : m_currentSearchIndex + 1, m_searchResults.size());
 
     setExtraSelections(extra1 + extra2 + extra_squiggles + extra_search);
 }
@@ -1330,10 +1384,12 @@ void QCodeEditor::onSearchTextChanged(const QString &text)
 void QCodeEditor::highlightCurrentSearchResult()
 {
     if (m_currentSearchIndex < 0 || m_currentSearchIndex >= m_searchResults.size())
+    {
         return;
+    }
 
     // Move cursor to current result
-    QTextCursor cursor = m_searchResults[m_currentSearchIndex];
+    const QTextCursor cursor = m_searchResults[m_currentSearchIndex];
     setTextCursor(cursor);
     ensureCursorVisible();
 }
@@ -1341,11 +1397,15 @@ void QCodeEditor::highlightCurrentSearchResult()
 void QCodeEditor::findNext()
 {
     if (m_searchResults.isEmpty())
+    {
         return;
+    }
 
     m_currentSearchIndex++;
     if (m_currentSearchIndex >= m_searchResults.size())
+    {
         m_currentSearchIndex = 0;
+    }
 
     highlightCurrentSearchResult();
 
@@ -1355,11 +1415,15 @@ void QCodeEditor::findNext()
 void QCodeEditor::findPrevious()
 {
     if (m_searchResults.isEmpty())
+    {
         return;
+    }
 
     m_currentSearchIndex--;
     if (m_currentSearchIndex < 0)
+    {
         m_currentSearchIndex = m_searchResults.size() - 1;
+    }
 
     highlightCurrentSearchResult();
 
