@@ -13,7 +13,7 @@
 class QSyntaxStyle;
 
 /**
- * @brief Class, that describes C++ code
+ * @brief Class, that describes Lua code
  * highlighter.
  */
 class QLuaHighlighter : public QStyleSyntaxHighlighter

@@ -1,14 +1,19 @@
 // QCodeEditor
-#include <QLanguage>
-#include <QLuaCompleter>
+#include "internal/QLuaCompleter.hpp"
+#include "internal/QLanguage.hpp"
 
 // Qt
+#include <QCompleter>
 #include <QFile>
+#include <QObject>
+#include <QStringList>
 #include <QStringListModel>
+#include <qnamespace.h>
+#include <qtresource.h>
 
 QLuaCompleter::QLuaCompleter(QObject *parent) : QCompleter(parent)
 {
-    // Setting up GLSL types
+    // Setting up LUA types
     QStringList list;
 
     Q_INIT_RESOURCE(qcodeeditor_resources);

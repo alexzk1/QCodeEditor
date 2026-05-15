@@ -2,10 +2,12 @@
 
 // Qt
 #include <QCompleter> // Required for inheritance
+#include <QObject>
+#include <qtmetamacros.h>
 
 /**
  * @brief Class, that describes completer with
- * glsl specific types and functions.
+ * Lua specific types and functions.
  */
 class QLuaCompleter : public QCompleter
 {

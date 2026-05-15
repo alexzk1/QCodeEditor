@@ -1,7 +1,18 @@
 #pragma once
 
 // Qt
+#include <QObject>
+#include <QPair>
+#include <QStringList>
+#include <QTextCursor>
 #include <QTextEdit> // Required for inheritance
+#include <QWidget>
+
+#include <cstdint>
+#include <qcontainerfwd.h>
+#include <qtmetamacros.h>
+#include <qtypes.h>
+#include <utility>
 
 class QCompleter;
 class QLineNumberArea;
@@ -22,7 +33,7 @@ class QCodeEditor : public QTextEdit
      * @brief The SeverityLevel enum
      * @note the order should be: the bigger the more important
      */
-    enum class SeverityLevel
+    enum class SeverityLevel : std::uint8_t
     {
         Hint,
         Information,
@@ -35,6 +46,7 @@ class QCodeEditor : public QTextEdit
         QChar left, right;
         bool autoComplete, autoRemove, tabJumpOut;
 
+        // NOLINTNEXTLINE(google-explicit-constructor,bugprone-easily-swappable-parameters)
         Parenthesis(QChar l = '(', QChar r = ')', bool complete = true, bool remove = true, bool jumpout = true)
             : left(l), right(r), autoComplete(complete), autoRemove(remove), tabJumpOut(jumpout)
         {
@@ -47,9 +59,14 @@ class QCodeEditor : public QTextEdit
      */
     explicit QCodeEditor(QWidget *widget = nullptr);
 
+    QCodeEditor() = delete;
+    ~QCodeEditor() override;
+
     // Disable copying
     QCodeEditor(const QCodeEditor &) = delete;
     QCodeEditor &operator=(const QCodeEditor &) = delete;
+    QCodeEditor(QCodeEditor &&) = delete;
+    QCodeEditor &operator=(QCodeEditor &&) = delete;
 
     /**
      * @brief Method for getting first visible block
@@ -80,21 +97,21 @@ class QCodeEditor : public QTextEdit
      * @brief Method for getting is tab replacing enabled.
      * Default value: true
      */
-    bool tabReplace() const;
+    [[nodiscard]] bool tabReplace() const;
 
     /**
      * @brief Method for setting amount of spaces, that will
      * replace tab.
      * @param val Number of spaces.
      */
-    void setTabReplaceSize(int val);
+    void setTabReplaceSize(qsizetype val);
 
     /**
      * @brief Method for getting number of spaces, that will
      * replace tab if `tabReplace` is true.
      * Default: 4
      */
-    int tabReplaceSize() const;
+    [[nodiscard]] int tabReplaceSize() const;
 
     /**
      * @brief Method for setting auto indentation enabled.
@@ -115,7 +132,7 @@ class QCodeEditor : public QTextEdit
      * @brief Method for getting is auto indentation enabled.
      * Default: true
      */
-    bool autoIndentation() const;
+    [[nodiscard]] bool autoIndentation() const;
 
     /**
      * @brief Method for setting completer.
@@ -127,7 +144,7 @@ class QCodeEditor : public QTextEdit
      * @brief Method for getting completer.
      * @return Pointer to completer.
      */
-    QCompleter *completer() const;
+    [[nodiscard]] QCompleter *completer() const;
 
     /**
      * @brief squiggle Puts a underline squiggle under text ranges in Editor
@@ -156,7 +173,12 @@ class QCodeEditor : public QTextEdit
     /**
      * @brief Returns true if search widget is visible.
      */
-    bool isSearchVisible() const;
+    [[nodiscard]] bool isSearchVisible() const;
+
+    /**
+     * @brief Plain text as separated lines object.
+     */
+    [[nodiscard]] QStringList getLines() const;
 
   signals:
     /**
@@ -366,14 +388,14 @@ class QCodeEditor : public QTextEdit
      * cursor.
      * @param offset Offset to cursor.
      */
-    QChar charUnderCursor(int offset = 0) const;
+    [[nodiscard]] QChar charUnderCursor(int offset = 0) const;
 
     /**
      * @brief Method for getting word under
      * cursor.
      * @return Word under cursor.
      */
-    QString wordUnderCursor() const;
+    [[nodiscard]] QString wordUnderCursor() const;
 
     /**
      * @brief Method, that adds highlighting of
@@ -417,8 +439,9 @@ class QCodeEditor : public QTextEdit
     {
         SquiggleInformation() = default;
 
-        SquiggleInformation(QPair<int, int> start, QPair<int, int> stop, const QString &text)
-            : m_startPos(start), m_stopPos(stop), m_tooltipText(text)
+        // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+        SquiggleInformation(QPair<int, int> start, QPair<int, int> stop, QString text)
+            : m_startPos(std::move(start)), m_stopPos(std::move(stop)), m_tooltipText(std::move(text))
         {
         }
 
