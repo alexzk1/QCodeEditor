@@ -645,7 +645,12 @@ int QCodeEditor::getFirstVisibleBlock()
 
 bool QCodeEditor::proceedCompleterBegin(QKeyEvent *e)
 {
-    if (m_completer && m_completer->popup()->isVisible())
+    if (!m_completer)
+    {
+        return false;
+    }
+
+    if (m_completer->popup()->isVisible())
     {
         switch (e->key())
         {
@@ -662,9 +667,7 @@ bool QCodeEditor::proceedCompleterBegin(QKeyEvent *e)
     }
 
     // todo: Replace with modifiable QShortcut
-    auto isShortcut = ((e->modifiers() & Qt::ControlModifier) && e->key() == Qt::Key_Space);
-
-    return !(!m_completer || !isShortcut);
+    return ((e->modifiers() & Qt::ControlModifier) && e->key() == Qt::Key_Space);
 }
 
 void QCodeEditor::proceedCompleterEnd(QKeyEvent *e)

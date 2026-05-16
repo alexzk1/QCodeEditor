@@ -1,46 +1,68 @@
 // QCodeEditor
 #include "internal/QLuaCompleter.hpp"
+#include "internal/QCompletingSymbol.hpp"
+#include "internal/QCompletingSymbolModel.hpp"
 #include "internal/QLanguage.hpp"
 
 // Qt
 #include <QCompleter>
 #include <QFile>
+#include <QList>
 #include <QObject>
 #include <QStringList>
 #include <QStringListModel>
+#include <qcontainerfwd.h>
 #include <qnamespace.h>
 #include <qtresource.h>
+#include <utility>
 
-QLuaCompleter::QLuaCompleter(QObject *parent) : QCompleter(parent)
+namespace
 {
-    // Setting up LUA types
-    QStringList list;
-
-    Q_INIT_RESOURCE(qcodeeditor_resources);
+SymbolsList loadKeywordsFromResouces()
+{
     QFile fl(":/languages/lua.xml");
-
     if (!fl.open(QIODevice::ReadOnly))
     {
-        return;
+        return {};
     }
 
     QLanguage language(&fl);
 
     if (!language.isLoaded())
     {
-        return;
+        return {};
     }
+
+    SymbolsList list;
 
     auto keys = language.keys();
     for (auto &&key : keys)
     {
         auto names = language.names(key);
-        list.append(names);
+        for (auto &&name : names)
+        {
+            static const QString kTooltipForKeyword = "Lua Keyword";
+            list.append({std::move(name), kTooltipForKeyword});
+        }
     }
+    return list;
+}
+} // namespace
 
-    setModel(new QStringListModel(list, this));
+QLuaCompleter::QLuaCompleter(QObject *parent) : QCompleter(parent), m_model(new CompletingSymbolModel(this))
+{
+    Q_INIT_RESOURCE(qcodeeditor_resources);
+
+    m_model->setStaticSymbols(loadKeywordsFromResouces());
+
+    setModel(m_model);
     setCompletionColumn(0);
-    setModelSorting(QCompleter::CaseInsensitivelySortedModel);
+    setModelSorting(QCompleter::UnsortedModel);
     setCaseSensitivity(Qt::CaseSensitive);
     setWrapAround(true);
+}
+
+void QLuaCompleter::updateDynamicSymbols(const SymbolsList &symbols)
+{
+    m_model->setDynamicSymbols(symbols);
 }

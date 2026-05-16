@@ -1,9 +1,12 @@
 #pragma once
 
 // Qt
+#include "internal/QCompletingSymbol.hpp"
 #include <QCompleter> // Required for inheritance
 #include <QObject>
 #include <qtmetamacros.h>
+
+class CompletingSymbolModel;
 
 /**
  * @brief Class, that describes completer with
@@ -19,4 +22,9 @@ class QLuaCompleter : public QCompleter
      * @param parent Pointer to parent QObject.
      */
     explicit QLuaCompleter(QObject *parent = nullptr);
+
+    void updateDynamicSymbols(const SymbolsList &symbols);
+
+  private:
+    CompletingSymbolModel *m_model{};
 };

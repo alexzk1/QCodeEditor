@@ -67,6 +67,8 @@ set(INCLUDE_FILES
     include/internal/QPythonCompleter.hpp
     include/internal/QPythonHighlighter.hpp
     include/internal/QFaustCompleter.hpp
+    include/internal/QCompletingSymbolModel.hpp
+    include/internal/QCompletingSymbol.hpp
     include/internal/QFaustHighlighter.hpp)
 
 set(SOURCE_FILES
@@ -89,6 +91,7 @@ set(SOURCE_FILES
     src/internal/QPythonCompleter.cpp
     src/internal/QPythonHighlighter.cpp
     src/internal/QFaustCompleter.cpp
+    src/internal/QCompletingSymbolModel.cpp
     src/internal/QFaustHighlighter.cpp)
 
 find_package(${QT} REQUIRED COMPONENTS Core Gui Widgets)
