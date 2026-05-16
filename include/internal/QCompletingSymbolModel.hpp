@@ -3,6 +3,7 @@
 #include "internal/QCompletingSymbol.hpp"
 #include <QAbstractTableModel>
 #include <QObject>
+#include <functional>
 #include <qcontainerfwd.h>
 #include <qnamespace.h>
 #include <qtmetamacros.h>
@@ -16,6 +17,8 @@ class CompletingSymbolModel : public QAbstractTableModel
 {
     Q_OBJECT
   public:
+    using SymbolsAccessT = std::function<void(SymbolsList &)>;
+
     explicit CompletingSymbolModel(QObject *parent) : QAbstractTableModel(parent)
     {
     }
@@ -26,19 +29,20 @@ class CompletingSymbolModel : public QAbstractTableModel
     CompletingSymbolModel(CompletingSymbolModel &&) = delete;
     CompletingSymbolModel &operator=(CompletingSymbolModel &&) = delete;
 
-    /// @brief Set static model data.
-    void setStaticSymbols(const SymbolsList &staticSymbols);
-    /// @brief Set dynamic model data.
-    void setDynamicSymbols(const SymbolsList &dynamicSymbols);
+    /// @brief Access static model data for read/write.
+    void accessStaticSymbols(const SymbolsAccessT &accessFunc);
+    /// @brief Access dynamic model data for read/write.
+    void accessDynamicSymbols(const SymbolsAccessT &accessFunc);
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     [[nodiscard]] int columnCount(const QModelIndex &parent = QModelIndex()) const override;
     [[nodiscard]] QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
   private:
+    void accessList(SymbolsList &src, const SymbolsAccessT &accessFunc);
     void rebuildCombinedList();
 
-    QList<CompletingSymbol> m_staticSymbols;
-    QList<CompletingSymbol> m_dynamicSymbols;
-    QList<CompletingSymbol> m_combinedSymbols;
+    SymbolsList m_staticSymbols;
+    SymbolsList m_dynamicSymbols;
+    SymbolsList m_combinedSymbols;
 };

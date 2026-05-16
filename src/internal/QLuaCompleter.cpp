@@ -53,7 +53,7 @@ QLuaCompleter::QLuaCompleter(QObject *parent) : QCompleter(parent), m_model(new 
 {
     Q_INIT_RESOURCE(qcodeeditor_resources);
 
-    m_model->setStaticSymbols(loadKeywordsFromResouces());
+    m_model->accessStaticSymbols([](auto &out) { out = loadKeywordsFromResouces(); });
 
     setModel(m_model);
     setCompletionColumn(0);
@@ -62,7 +62,7 @@ QLuaCompleter::QLuaCompleter(QObject *parent) : QCompleter(parent), m_model(new 
     setWrapAround(true);
 }
 
-void QLuaCompleter::updateDynamicSymbols(const SymbolsList &symbols)
+CompletingSymbolModel *QLuaCompleter::symbolModel()
 {
-    m_model->setDynamicSymbols(symbols);
+    return m_model;
 }

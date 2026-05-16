@@ -7,20 +7,43 @@
 #include <algorithm>
 #include <qcontainerfwd.h>
 #include <qnamespace.h>
-#include <utility>
 
-void CompletingSymbolModel::setStaticSymbols(const SymbolsList &staticSymbols)
+namespace
+{
+
+// Makes list unique case-sensitive, then sort it case-insensitive by "name" field.
+SymbolsList sortUniqueKeywords(const SymbolsList &input)
+{
+    SymbolsList uniqueList;
+    QSet<QString> seen;
+    for (const auto &s : input)
+    {
+        if (!seen.contains(s.name))
+        {
+            uniqueList.append(s);
+            seen.insert(s.name);
+        }
+    }
+    std::sort(uniqueList.begin(), uniqueList.end(), [](const CompletingSymbol &a, const CompletingSymbol &b) {
+        return QString::compare(a.name, b.name, Qt::CaseInsensitive) < 0;
+    });
+
+    return uniqueList;
+};
+} // namespace
+
+void CompletingSymbolModel::accessStaticSymbols(const SymbolsAccessT &accessFunc)
 {
     beginResetModel();
-    m_staticSymbols = staticSymbols;
+    accessList(m_staticSymbols, accessFunc);
     rebuildCombinedList();
     endResetModel();
 }
 
-void CompletingSymbolModel::setDynamicSymbols(const SymbolsList &dynamicSymbols)
+void CompletingSymbolModel::accessDynamicSymbols(const SymbolsAccessT &accessFunc)
 {
     beginResetModel();
-    m_dynamicSymbols = dynamicSymbols;
+    accessList(m_dynamicSymbols, accessFunc);
     rebuildCombinedList();
     endResetModel();
 }
@@ -58,32 +81,16 @@ QVariant CompletingSymbolModel::data(const QModelIndex &index, int role) const
     return {};
 }
 
+void CompletingSymbolModel::accessList(SymbolsList &src, const SymbolsAccessT &accessFunc)
+{
+    accessFunc(src);
+    src = sortUniqueKeywords(src);
+}
+
 void CompletingSymbolModel::rebuildCombinedList()
 {
     m_combinedSymbols.clear();
-
-    const auto processList = [](const SymbolsList &input) {
-        SymbolsList uniqueList;
-        QSet<QString> seen;
-        for (const auto &s : input)
-        {
-            if (!seen.contains(s.name))
-            {
-                uniqueList.append(s);
-                seen.insert(s.name);
-            }
-        }
-        std::sort(uniqueList.begin(), uniqueList.end(), [](const CompletingSymbol &a, const CompletingSymbol &b) {
-            return QString::compare(a.name, b.name, Qt::CaseInsensitive) < 0;
-        });
-
-        return uniqueList;
-    };
-
-    auto sortedStatic = processList(m_staticSymbols);
-    auto sortedDynamic = processList(m_dynamicSymbols);
-
-    m_combinedSymbols.reserve(sortedStatic.size() + sortedDynamic.size());
-    m_combinedSymbols.append(std::move(sortedStatic));
-    m_combinedSymbols.append(std::move(sortedDynamic));
+    m_combinedSymbols.reserve(m_staticSymbols.size() + m_dynamicSymbols.size());
+    m_combinedSymbols.append(m_staticSymbols);
+    m_combinedSymbols.append(m_dynamicSymbols);
 }
