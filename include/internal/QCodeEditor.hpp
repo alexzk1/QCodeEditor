@@ -435,7 +435,7 @@ class QCodeEditor : public QTextEdit
 
     /// @brief Provides tooltip to display: currently it can be SquiggleInformation or tooltip bound to [key]word in
     /// model of completer.
-    QString getTooltipAtPosition(const QPoint &localPos) const;
+    [[nodiscard]] QString getTooltipAtPosition(const QPoint &localPos) const;
 
     /**
      * @brief The SquiggleInformation struct, Line number will be index of vector+1;
