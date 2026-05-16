@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <qcontainerfwd.h>
 #include <qnamespace.h>
+#include <utility>
 
 namespace
 {
@@ -43,6 +44,20 @@ void CompletingSymbolModel::accessDynamicSymbols(const SymbolsAccessT &accessFun
 {
     beginResetModel();
     accessList(m_dynamicSymbols, accessFunc);
+
+    // Remove anything already present in static data.
+    if (!m_staticSymbols.empty())
+    {
+        QSet<QString> staticNames;
+        for (const auto &s : std::as_const(m_staticSymbols))
+        {
+            staticNames.insert(s.name);
+        }
+        m_dynamicSymbols.erase(
+            std::remove_if(m_dynamicSymbols.begin(), m_dynamicSymbols.end(),
+                           [&staticNames](const CompletingSymbol &s) { return staticNames.contains(s.name); }),
+            m_dynamicSymbols.end());
+    }
     rebuildCombinedList();
     endResetModel();
 }
