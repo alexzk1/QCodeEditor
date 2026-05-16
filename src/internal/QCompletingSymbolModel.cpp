@@ -10,7 +10,6 @@
 
 namespace
 {
-
 // Makes list unique case-sensitive, then sort it case-insensitive by "name" field.
 SymbolsList sortUniqueKeywords(const SymbolsList &input)
 {
