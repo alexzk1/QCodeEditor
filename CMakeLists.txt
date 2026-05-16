@@ -46,6 +46,8 @@ set(INCLUDE_FILES
     include/QPythonHighlighter
     include/QFaustCompleter
     include/QFaustHighlighter
+    include/QCompletingSymbolModel
+    include/QCompletingSymbol
     include/internal/QHighlightRule.hpp
     include/internal/QHighlightBlockRule.hpp
     include/internal/QCodeEditor.hpp

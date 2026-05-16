@@ -7,7 +7,7 @@
 /// @brief Symbol used with completers.
 struct CompletingSymbol
 {
-    decltype(auto) tie() const
+    [[nodiscard]] decltype(auto) tie() const
     {
         return std::tie(name, tooltip);
     }
