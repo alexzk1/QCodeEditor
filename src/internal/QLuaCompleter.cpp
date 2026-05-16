@@ -41,7 +41,7 @@ SymbolsList loadKeywordsFromResouces()
         auto names = language.names(key);
         for (auto &&name : names)
         {
-            static const QString kTooltipForKeyword = "Lua Keyword";
+            static const QString kTooltipForKeyword = "";
             list.append({std::move(name), kTooltipForKeyword});
         }
     }
