@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <QTextCursor>
 #include <QTextEdit> // Required for inheritance
+#include <QTimer>
 #include <QWidget>
 
 #include <cstdint>
@@ -348,7 +349,7 @@ class QCodeEditor : public QTextEdit
     /**
      * @brief Method for tooltip generation
      */
-    bool event(QEvent *e) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
 
   private slots:
     /**
@@ -432,6 +433,10 @@ class QCodeEditor : public QTextEdit
      */
     void addInEachLineOfSelection(const QRegularExpression &regex, const QString &str);
 
+    /// @brief Provides tooltip to display: currently it can be SquiggleInformation or tooltip bound to [key]word in
+    /// model of completer.
+    QString getTooltipAtPosition(const QPoint &localPos) const;
+
     /**
      * @brief The SquiggleInformation struct, Line number will be index of vector+1;
      */
@@ -469,4 +474,6 @@ class QCodeEditor : public QTextEdit
     int m_currentSearchIndex;
 
     QVector<Parenthesis> m_parentheses;
+    QTimer m_mouseDebounceTimer;
+    QPoint m_lastMousePos;
 };

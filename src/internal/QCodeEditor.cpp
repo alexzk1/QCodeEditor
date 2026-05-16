@@ -1,5 +1,6 @@
 // QCodeEditor
 #include "internal/QCodeEditor.hpp"
+#include "internal/QCompletingSymbolModel.hpp"
 
 #include <QCXXHighlighter>         //NOLINT
 #include <QCodeEditor>             //NOLINT
@@ -27,7 +28,9 @@
 #include <QTextCharFormat>
 #include <QTextEdit>
 #include <QTextStream>
+#include <QTimer>
 #include <QToolTip>
+#include <algorithm>
 #include <qbrush.h>
 #include <qcontainerfwd.h>
 #include <qlogging.h>
@@ -36,7 +39,6 @@
 #include <qnumeric.h>
 #include <qobject.h>
 #include <qoverload.h>
-#include <qpaintdevice.h>
 #include <qtmetamacros.h>
 #include <qtversionchecks.h>
 #include <qtypes.h>
@@ -44,6 +46,8 @@
 
 namespace
 {
+constexpr int kMouseTooltipDebounceTimerMs = 150;
+
 struct SelectionContext
 {
     explicit SelectionContext(QTextCursor cursorCopy)
@@ -106,6 +110,17 @@ QCodeEditor::QCodeEditor(QWidget *widget)
         if (hasFocus())
         {
             m_textChanged = true;
+        }
+    });
+    connect(&m_mouseDebounceTimer, &QTimer::timeout, this, [this]() {
+        const QString tooltip = getTooltipAtPosition(m_lastMousePos);
+        if (!tooltip.isEmpty())
+        {
+            QToolTip::showText(mapToGlobal(m_lastMousePos), tooltip, this);
+        }
+        else
+        {
+            QToolTip::hideText();
         }
     });
 }
@@ -1030,51 +1045,12 @@ void QCodeEditor::focusOutEvent(QFocusEvent *e)
     }
 }
 
-bool QCodeEditor::event(QEvent *event)
+void QCodeEditor::mouseMoveEvent(QMouseEvent *event)
 {
-    if (event->type() == QEvent::ToolTip)
-    {
-        auto *helpEvent = dynamic_cast<QHelpEvent *>(event);
-        auto point = helpEvent->pos();
-        point.setX(point.x() - m_lineNumberArea->geometry().right());
-        const QTextCursor cursor = cursorForPosition(point);
-
-        auto lineNumber = cursor.blockNumber() + 1;
-
-        QTextCursor copyCursor(cursor);
-        copyCursor.movePosition(QTextCursor::StartOfBlock);
-
-        auto blockPositionStart = cursor.positionInBlock() - copyCursor.positionInBlock();
-        const QPair<int, int> positionOfTooltip{lineNumber, blockPositionStart};
-
-        QString text;
-        for (auto const &e : std::as_const(m_squiggler))
-        {
-            if (e.m_startPos <= positionOfTooltip && e.m_stopPos >= positionOfTooltip)
-            {
-                if (text.isEmpty())
-                {
-                    text = e.m_tooltipText;
-                }
-                else
-                {
-                    text += "; " + e.m_tooltipText;
-                }
-            }
-        }
-
-        if (text.isEmpty())
-        {
-            QToolTip::hideText();
-        }
-        else
-        {
-            QToolTip::showText(helpEvent->globalPos(), text);
-        }
-
-        return true;
-    }
-    return QTextEdit::event(event);
+    QTextEdit::mouseMoveEvent(event);
+    m_lastMousePos = event->pos();
+    m_mouseDebounceTimer.stop();
+    m_mouseDebounceTimer.start(kMouseTooltipDebounceTimerMs);
 }
 
 QStringList QCodeEditor::getLines() const
@@ -1286,6 +1262,106 @@ void QCodeEditor::addInEachLineOfSelection(const QRegularExpression &regex, cons
     const int posEnd = ctx.selectionEnd + len * (ctx.lineEnd - ctx.lineStart + 1);
     ctx.normalizeSelection(posStart, posEnd);
     setTextCursor(cursor);
+}
+
+QString QCodeEditor::getTooltipAtPosition(const QPoint &localPos) const
+{
+    const auto lineNumbersBorder = m_lineNumberArea->geometry().right();
+    if (localPos.x() < lineNumbersBorder)
+    {
+        return {};
+    }
+
+    // 1. Adjust coordinates to account for the Line Number Area offset
+    const QTextCursor cursor = cursorForPosition(QPoint(localPos.x() - lineNumbersBorder, localPos.y()));
+
+    // If the adjustment puts us outside the document bounds, return empty
+    if (cursor.isNull())
+    {
+        return {};
+    }
+    const int lineNumber = cursor.blockNumber() + 1;
+
+    QTextCursor copyCursor(cursor);
+    copyCursor.movePosition(QTextCursor::StartOfBlock);
+    const int blockPositionStart = cursor.positionInBlock() - copyCursor.positionInBlock();
+    const QPair<int, int> positionOfTooltip{lineNumber, blockPositionStart};
+
+    QString errorText;
+    for (const auto &e : std::as_const(m_squiggler))
+    {
+        if (e.m_startPos <= positionOfTooltip && e.m_stopPos >= positionOfTooltip)
+        {
+            if (errorText.isEmpty())
+            {
+                errorText = e.m_tooltipText;
+            }
+            else
+            {
+                errorText += "; " + e.m_tooltipText;
+            }
+        }
+    }
+
+    if (!errorText.isEmpty())
+    {
+        return errorText;
+    }
+
+    // 2. Если ошибок нет, проверяем Lua-символы
+    if (m_completer)
+    {
+        // Находим слово под курсором
+        QTextCursor wordCursor = cursor;
+        wordCursor.select(QTextCursor::WordUnderCursor);
+        const QString word = wordCursor.selectedText();
+
+        if (!word.isEmpty())
+        {
+            // --- HIT TEST START ---
+            bool isPhysicallyOnWord = false;
+            const auto *layout = wordCursor.block().layout();
+            const int startIdx = wordCursor.selectionStart();
+            const int endIdx = wordCursor.selectionEnd();
+
+            for (int i = 0; i < layout->lineCount(); ++i)
+            {
+                const auto &line = layout->lineAt(i);
+                // Проверяем, пересекает ли эта линия диапазон нашего слова
+                if (line.textStart() + line.textLength() > startIdx && line.textStart() < endIdx)
+                {
+                    // Вычисляем визуальные границы X для части слова на этой линии
+                    const auto xMin = line.cursorToX(std::max(startIdx, line.textStart()));
+                    const auto xMax = line.cursorToX(std::min(endIdx, line.textStart() + line.textLength()));
+
+                    if (localPos.x() >= xMin && localPos.x() <= xMax)
+                    {
+                        isPhysicallyOnWord = true;
+                        break;
+                    }
+                }
+            }
+            if (!isPhysicallyOnWord)
+            {
+                return {};
+            }
+            // --- HIT TEST END ---
+
+            if (auto *model = dynamic_cast<CompletingSymbolModel *>(m_completer->model()))
+            {
+                for (int i = 0; i < model->rowCount(); ++i)
+                {
+                    const QModelIndex idx = model->index(i, 0);
+                    if (model->data(idx, Qt::DisplayRole).toString() == word)
+                    {
+                        return model->data(idx, Qt::ToolTipRole).toString();
+                    }
+                }
+            }
+        }
+    }
+
+    return {};
 }
 
 void QCodeEditor::showSearch()
