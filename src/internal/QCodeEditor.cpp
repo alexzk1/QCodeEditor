@@ -1316,8 +1316,7 @@ QString QCodeEditor::getTooltipAtPosition(const QPoint &localPos) const
         {
             // --- HIT TEST START (The Fix) ---
             // 1. Находим индекс символа, который находится ПРЯМО под мышью (с учетом X и Y)
-            const QTextCursor hitCursor = cursorForPosition(localPos);
-            const int hitPos = hitCursor.position();
+            const int hitPos = cursor.position();
 
             // 2. Границы нашего слова
             const int startIdx = wordCursor.selectionStart();
