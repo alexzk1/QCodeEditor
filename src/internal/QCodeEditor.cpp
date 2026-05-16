@@ -48,6 +48,7 @@
 namespace
 {
 constexpr int kMouseTooltipDebounceTimerMs = 150;
+constexpr int kTextEditedSignalDebounceTimerMs = 650;
 
 struct SelectionContext
 {
@@ -126,6 +127,12 @@ QCodeEditor::QCodeEditor(QWidget *widget)
     });
 
     setWordWrapMode(QTextOption::NoWrap);
+
+    // Text changed signal/debounced. Auto-complete may connect to there to self update.
+    m_textEditedDebounceTimer.setSingleShot(true);
+    m_textEditedDebounceTimer.setInterval(kTextEditedSignalDebounceTimerMs);
+    connect(&m_textEditedDebounceTimer, &QTimer::timeout, this, [this]() { emit semanticUpdateRequired(); });
+    connect(this, &QTextEdit::textChanged, this, [this]() { m_textEditedDebounceTimer.start(); });
 }
 
 QCodeEditor::~QCodeEditor() = default;

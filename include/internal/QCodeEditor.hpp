@@ -197,6 +197,9 @@ class QCodeEditor : public QTextEdit
      */
     void livecodeTrigger();
 
+    /// @brief Signal that auto-complete may re-read code for new items.
+    void semanticUpdateRequired();
+
   public slots:
     /**
      * @brief Slot, that performs insertion of
@@ -476,4 +479,6 @@ class QCodeEditor : public QTextEdit
     QVector<Parenthesis> m_parentheses;
     QTimer m_mouseDebounceTimer;
     QPoint m_lastMousePos;
+
+    QTimer m_textEditedDebounceTimer;
 };
