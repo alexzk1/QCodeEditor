@@ -39,6 +39,7 @@
 #include <qnumeric.h>
 #include <qobject.h>
 #include <qoverload.h>
+#include <qtextoption.h>
 #include <qtmetamacros.h>
 #include <qtversionchecks.h>
 #include <qtypes.h>
@@ -123,6 +124,8 @@ QCodeEditor::QCodeEditor(QWidget *widget)
             QToolTip::hideText();
         }
     });
+
+    setWordWrapMode(QTextOption::NoWrap);
 }
 
 QCodeEditor::~QCodeEditor() = default;
@@ -1266,14 +1269,7 @@ void QCodeEditor::addInEachLineOfSelection(const QRegularExpression &regex, cons
 
 QString QCodeEditor::getTooltipAtPosition(const QPoint &localPos) const
 {
-    const auto lineNumbersBorder = m_lineNumberArea->geometry().right();
-    if (localPos.x() < lineNumbersBorder)
-    {
-        return {};
-    }
-
-    // 1. Adjust coordinates to account for the Line Number Area offset
-    const QTextCursor cursor = cursorForPosition(QPoint(localPos.x() - lineNumbersBorder, localPos.y()));
+    const QTextCursor cursor = cursorForPosition(localPos);
 
     // If the adjustment puts us outside the document bounds, return empty
     if (cursor.isNull())
@@ -1318,29 +1314,18 @@ QString QCodeEditor::getTooltipAtPosition(const QPoint &localPos) const
 
         if (!word.isEmpty())
         {
-            // --- HIT TEST START ---
-            bool isPhysicallyOnWord = false;
-            const auto *layout = wordCursor.block().layout();
+            // --- HIT TEST START (The Fix) ---
+            // 1. Находим индекс символа, который находится ПРЯМО под мышью (с учетом X и Y)
+            const QTextCursor hitCursor = cursorForPosition(localPos);
+            const int hitPos = hitCursor.position();
+
+            // 2. Границы нашего слова
             const int startIdx = wordCursor.selectionStart();
             const int endIdx = wordCursor.selectionEnd();
 
-            for (int i = 0; i < layout->lineCount(); ++i)
-            {
-                const auto &line = layout->lineAt(i);
-                // Проверяем, пересекает ли эта линия диапазон нашего слова
-                if (line.textStart() + line.textLength() > startIdx && line.textStart() < endIdx)
-                {
-                    // Вычисляем визуальные границы X для части слова на этой линии
-                    const auto xMin = line.cursorToX(std::max(startIdx, line.textStart()));
-                    const auto xMax = line.cursorToX(std::min(endIdx, line.textStart() + line.textLength()));
+            // 3. Проверяем: попадает ли индекс под мышью в диапазон символов слова?
+            const bool isPhysicallyOnWord = (hitPos >= startIdx && hitPos < endIdx);
 
-                    if (localPos.x() >= xMin && localPos.x() <= xMax)
-                    {
-                        isPhysicallyOnWord = true;
-                        break;
-                    }
-                }
-            }
             if (!isPhysicallyOnWord)
             {
                 return {};
