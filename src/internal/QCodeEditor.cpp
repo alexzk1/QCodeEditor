@@ -506,6 +506,41 @@ void QCodeEditor::toggleBlockComment()
     setTextCursor(cursor);
 }
 
+void QCodeEditor::smartToggleComments()
+{
+    if (!m_highlighter)
+    {
+        return;
+    }
+
+    const SelectionContext ctx(textCursor());
+    if (!ctx.cursor.hasSelection())
+    {
+        toggleComment();
+        return;
+    }
+
+    const bool spansMultipleLines = (ctx.lineEnd > ctx.lineStart);
+
+    bool isFullLine = false;
+    if (!spansMultipleLines)
+    {
+        const QTextBlock block = ctx.cursor.block();
+        const int startInBlock = ctx.selectionStart - block.position(); // Позиция старта относительно начала блока
+        const int endInBlock = ctx.selectionEnd - block.position();     // Позиция конца относительно начала блока
+        isFullLine = (startInBlock == 0 && endInBlock >= static_cast<int>(block.text().length()) - 1);
+    }
+
+    if (spansMultipleLines || isFullLine)
+    {
+        toggleComment();
+    }
+    else
+    {
+        toggleBlockComment();
+    }
+}
+
 void QCodeEditor::highlightParenthesis()
 {
     auto currentSymbol = charUnderCursor();
@@ -741,6 +776,20 @@ void QCodeEditor::keyPressEvent(QKeyEvent *e)
     if (e->key() == Qt::Key_Escape && m_searchWidget->isSearchVisible())
     {
         hideSearch();
+        return;
+    }
+
+    // Handle alt+Z (toggle word wrap).
+    if (e->modifiers() == Qt::AltModifier && e->key() == Qt::Key_Z)
+    {
+        switchWordWrap();
+        return;
+    }
+
+    // Handle ctrl + / - toggle comments.
+    if (e->modifiers() == Qt::ControlModifier && e->key() == Qt::Key_Slash)
+    {
+        smartToggleComments();
         return;
     }
 
@@ -1073,6 +1122,18 @@ void QCodeEditor::leaveEvent(QEvent *e)
 QStringList QCodeEditor::getLines() const
 {
     return toPlainText().remove('\r').split('\n');
+}
+
+void QCodeEditor::switchWordWrap()
+{
+    if (wordWrapMode() == QTextOption::NoWrap)
+    {
+        setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    }
+    else
+    {
+        setWordWrapMode(QTextOption::NoWrap);
+    }
 }
 
 void QCodeEditor::insertCompletion(const QString &s)

@@ -181,6 +181,11 @@ class QCodeEditor : public QTextEdit
      */
     [[nodiscard]] QStringList getLines() const;
 
+    /**
+     * @brief Simple word-wrap switcher (on/off).
+     */
+    void switchWordWrap();
+
   signals:
     /**
      * @brief Signal, the font is changed by the wheel event.
@@ -274,6 +279,11 @@ class QCodeEditor : public QTextEdit
      * @brief Slot, that toggle block comment of the selection.
      */
     void toggleBlockComment();
+
+    /**
+     * @brief Slot, that toggle line or block comment of the selection.
+     */
+    void smartToggleComments();
 
     /**
      * @brief Slot, handles search text changes.
