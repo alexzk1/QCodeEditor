@@ -353,6 +353,10 @@ class QCodeEditor : public QTextEdit
      * @brief Method for tooltip generation
      */
     void mouseMoveEvent(QMouseEvent *event) override;
+    /**
+     * @brief Method for tooltip generation
+     */
+    void leaveEvent(QEvent *e) override;
 
   private slots:
     /**

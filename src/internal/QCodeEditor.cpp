@@ -1063,6 +1063,13 @@ void QCodeEditor::mouseMoveEvent(QMouseEvent *event)
     m_mouseDebounceTimer.start(kMouseTooltipDebounceTimerMs);
 }
 
+void QCodeEditor::leaveEvent(QEvent *e)
+{
+    // If mouse is out of widget, stop timer so we don't interfere others tooltips.
+    m_mouseDebounceTimer.stop();
+    QTextEdit::leaveEvent(e);
+}
+
 QStringList QCodeEditor::getLines() const
 {
     return toPlainText().remove('\r').split('\n');
